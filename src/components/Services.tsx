@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, Shield } from "lucide-react";
+import { Sparkles, Shield, Stethoscope, Baby, Scissors, FileBadge } from "lucide-react";
 
 const Services = () => {
   const services = [
@@ -12,6 +12,31 @@ const Services = () => {
       icon: Shield,
       title: "Aplicación de flúor",
       description: "Fortalece el esmalte dental y previene caries de manera efectiva.",
+    },
+    {
+      icon: Stethoscope,
+      title: "Operatoria dental",
+      description: "Remoción de caries y restauración con resina para conservar tus dientes naturales.",
+    },
+    {
+      icon: FileBadge,
+      title: "Prótesis fija y removible",
+      description: "Reemplazamos piezas dentales perdidas devolviendo funcionalidad y estética.",
+    },
+    {
+      icon: Scissors,
+      title: "Endodoncia",
+      description: "Tratamiento de conductos para eliminar infecciones y conservar dientes dañados.",
+    },
+    {
+      icon: Baby,
+      title: "Odontopediatría",
+      description: "Atención especializada para el cuidado dental de los más pequeños.",
+    },
+    {
+      icon: Scissors,
+      title: "Extracción dental y cirugía",
+      description: "Procedimientos seguros y profesionales para la extracción o cirugía dental.",
     },
   ];
 
