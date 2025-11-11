@@ -1,4 +1,4 @@
-import { Facebook, Instagram } from "lucide-react";
+import { FaFacebook, FaInstagram } from "react-icons/fa";
 
 const Footer = () => {
   return (
@@ -15,19 +15,15 @@ const Footer = () => {
           </div>
 
           <div className="flex gap-4">
+
             <a
-              href="#"
-              className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center hover:bg-primary/20 transition-colors"
-              aria-label="Facebook"
-            >
-              <Facebook className="w-5 h-5 text-primary" />
-            </a>
-            <a
-              href="#"
-              className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center hover:bg-primary/20 transition-colors"
+              href="https://www.instagram.com/paris8606/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 transition"
               aria-label="Instagram"
             >
-              <Instagram className="w-5 h-5 text-primary" />
+              <FaInstagram className="w-10 h-10 text-[#E4405F]" /> {/* Rosa Instagram */}
             </a>
           </div>
         </div>

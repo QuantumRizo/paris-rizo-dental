@@ -34,7 +34,7 @@ const Hero = () => {
           <div className="animate-fade-in relative">
             <div className="rounded-3xl overflow-hidden shadow-medium">
               <img
-                src={heroImage}
+                src="/logo.jpg"
                 alt="Consultorio dental moderno y profesional"
                 className="w-full h-auto object-cover"
               />
