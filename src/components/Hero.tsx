@@ -17,7 +17,7 @@ const Hero = () => {
               Sonríe con <span className="text-primary">confianza</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
-              Cuidamos tu salud dental con limpieza y aplicación de flúor profesional.
+              Cuidamos tu salud dental.
             </p>
             <Button
               asChild
