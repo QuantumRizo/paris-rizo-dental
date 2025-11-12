@@ -18,13 +18,13 @@ const Hero = () => {
       <div className="container mx-auto px-6 py-16 sm:py-24 relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-20">
         {/* --- Imagen izquierda --- */}
         <div className="flex justify-center lg:justify-start w-full lg:w-1/2 animate-fade-in">
-          <div className="rounded-3xl overflow-hidden shadow-medium w-4/5 sm:w-2/3 lg:w-[90%] max-w-2xl">
-            <img
-              src="/logo.png"
-              alt="Consultorio dental moderno y profesional"
-              className="w-full h-auto object-cover"
-            />
-          </div>
+          <div className="rounded-3xl overflow-hidden shadow-medium w-4/5 sm:w-2/3 lg:w-[90%] max-w-2xl bg-background">
+  <img
+    src="/logo.png"
+    alt="Consultorio dental moderno y profesional"
+    className="w-full h-auto object-cover"
+  />
+</div>
         </div>
 
         {/* --- Texto derecha --- */}
