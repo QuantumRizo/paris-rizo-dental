@@ -13,13 +13,14 @@ const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-soft">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-primary/10 backdrop-blur-sm border-b border-border shadow-soft">
+
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         
         {/* Logo en lugar del texto */}
         <button onClick={() => scrollToSection("inicio")} className="flex items-center">
           <img
-  src="/logo.jpg"
+  src="/logo.png"
   alt="Logo Paris Rizo Consultorio Dental"
   className="h-[4rem] w-auto object-contain cursor-pointer hover:opacity-90 transition-opacity"
 />
