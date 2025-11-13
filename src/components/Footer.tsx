@@ -19,7 +19,7 @@ const Footer = () => {
           <div className="flex gap-4">
             {/* Instagram */}
             <a
-              href="https://www.instagram.com/paris8606/"
+              href="https://www.instagram.com/parisrizoconsultoriodental"
               target="_blank"
               rel="noopener noreferrer"
               className="w-10 h-10 rounded-full flex items-center justify-center hover:opacity-80 transition"

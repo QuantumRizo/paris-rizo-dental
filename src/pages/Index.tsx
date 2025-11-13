@@ -10,14 +10,12 @@ import Gallery from "@/components/Gallery";
 const Index = () => {
   return (
     <div className="min-h-screen">
-      <Header />
       <main>
         <Hero />
         <Services />
         <Gallery />
         <Contact />
       </main>
-      <Footer />
       <FloatingWhatsApp />
     </div>
   );
