@@ -1,42 +1,96 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { 
+  Sparkles, 
+  Shield, 
+  Stethoscope, 
+  FileBadge, 
+  Scissors, 
+  Baby, 
+  Calendar as CalendarIcon,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  User,
+  FileText
+} from 'lucide-react';
 
 // --- Configuración de Supabase ---
-// ¡IMPORTANTE! Reemplaza esto con tu URL y tu Clave Anónima (anon key)
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL 
-const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
+// Asegúrate de tener VITE_SUPABASE_URL y VITE_SUPABASE_KEY en tu archivo .env local
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseKey = import.meta.env.VITE_SUPABASE_KEY || "";
 const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
 
-// --- Constantes de Horarios ---
-const ALL_TIME_SLOTS = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-  '15:00', '15:30', '16:00', '16:30'
+// --- Configuración de Servicios y Duración ---
+// slots: Cantidad de bloques de 30 min que ocupa
+const SERVICES = [
+  { id: 'primera-vez', title: "Primera Vez", slots: 2, icon: CalendarIcon }, // Ej: 1 hora
+  { id: 'seguimiento', title: "Seguimiento", slots: 2, icon: CheckCircle2 },
+  { id: 'limpieza', title: "Limpieza dental", slots: 2, icon: Sparkles },
+  { id: 'fluor', title: "Aplicación de flúor", slots: 2, icon: Shield },
+  { id: 'operatoria', title: "Operatoria dental", slots: 2, icon: Stethoscope },
+  { id: 'protesis', title: "Prótesis dental", slots: 3, icon: FileBadge }, // Ej: 1.5 horas
+  { id: 'endodoncia', title: "Endodoncia", slots: 3, icon: Scissors },
+  { id: 'odontopediatria', title: "Odontopediatría", slots: 2, icon: Baby },
+  { id: 'cirugia', title: "Cirugías dentales", slots: 4, icon: Scissors }, // Ej: 2 horas
 ];
-const MAX_SLOTS_PER_DAY = ALL_TIME_SLOTS.length;
+
+// --- Constantes de Horarios (10:00 AM a 8:00 PM) ---
+const ALL_TIME_SLOTS = [
+  '10:00', '10:30', '11:00', '11:30',
+  '12:00', '12:30', '13:00', '13:30',
+  '14:00', '14:30', '15:00', '15:30',
+  '16:00', '16:30', '17:00', '17:30',
+  '18:00', '18:30', '19:00', '19:30',
+  '20:00'
+];
 
 // --- Tipos de Datos ---
 interface Appointment {
   id: number;
   date: string;
-  time: string;
+  time: string; // Hora de inicio
+  type: string; // Nombre del servicio
   status: 'Pendiente' | 'Confirmada' | 'Cancelada';
+  notes?: string;
 }
 
-// --- Componente de Calendario (Reutilizable) ---
+// Helper para saber cuántos slots ocupa un servicio basado en su nombre
+const getSlotsByServiceName = (serviceName: string): number => {
+  const service = SERVICES.find(s => s.title === serviceName);
+  return service ? service.slots : 1;
+};
+
+// --- Componente de Calendario ---
 const Calendar: React.FC<{
   selectedDate: string;
   onDateSelect: (dateStr: string) => void;
   month: Date;
   onMonthChange: (amount: number) => void;
-  dailyCounts: Map<string, number>;
+  appointments: Appointment[];
   todayStr: string;
-}> = ({ selectedDate, onDateSelect, month, onMonthChange, dailyCounts, todayStr }) => {
+}> = ({ selectedDate, onDateSelect, month, onMonthChange, appointments, todayStr }) => {
   const year = month.getFullYear();
   const monthIdx = month.getMonth();
   const firstDay = new Date(year, monthIdx, 1).getDay();
   const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
   const startOffset = (firstDay === 0) ? 6 : firstDay - 1;
+
+  // Calcular qué tan lleno está cada día
+  const getDayStatus = (dateStr: string) => {
+    const dayApps = appointments.filter(a => a.date === dateStr && a.status !== 'Cancelada');
+    let occupiedSlots = 0;
+    dayApps.forEach(app => {
+      occupiedSlots += getSlotsByServiceName(app.type);
+    });
+    
+    const totalSlots = ALL_TIME_SLOTS.length;
+    if (occupiedSlots >= totalSlots) return 'full';
+    if (occupiedSlots >= totalSlots * 0.7) return 'busy';
+    return 'free';
+  };
 
   const days = [];
   for (let i = 0; i < startOffset; i++) {
@@ -44,241 +98,393 @@ const Calendar: React.FC<{
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = formatDate(new Date(year, monthIdx, day));
-    const count = dailyCounts.get(dateStr) || 0;
-    const isFull = count >= MAX_SLOTS_PER_DAY;
+    const dateObj = new Date(year, monthIdx, day);
+    const dateStr = dateObj.toISOString().split('T')[0];
     const isPast = dateStr < todayStr;
     const isSelected = dateStr === selectedDate;
+    const isToday = dateStr === todayStr;
+    const status = getDayStatus(dateStr);
 
-    let dayClass = 'cursor-pointer transition-colors duration-200';
+    let dayClass = 'h-10 w-10 rounded-full flex items-center justify-center text-sm transition-all duration-200 relative ';
+    
     if (isPast) {
-      dayClass = 'text-gray-400 bg-gray-50 cursor-not-allowed';
-    } else if (isSelected) {
-      dayClass += ' bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] font-bold';
-    } else if (isFull) {
-      dayClass += ' bg-orange-100 text-orange-600 hover:bg-orange-200';
+      dayClass += 'text-gray-300 cursor-not-allowed';
     } else {
-      dayClass += ' bg-green-100 text-green-800 hover:bg-green-200';
+      dayClass += 'cursor-pointer hover:scale-110 ';
+      if (isSelected) {
+        dayClass += 'bg-blue-600 text-white shadow-lg font-bold scale-110';
+      } else if (status === 'full') {
+        dayClass += 'bg-red-100 text-red-400 line-through decoration-red-400';
+      } else if (status === 'busy') {
+        dayClass += 'bg-orange-100 text-orange-700 hover:bg-orange-200';
+      } else {
+        dayClass += 'bg-green-50 text-green-700 hover:bg-green-100 font-medium';
+      }
+      
+      if (isToday && !isSelected) dayClass += ' border-2 border-blue-400';
     }
 
     days.push(
-      <div
+      <button
         key={`day-${day}`}
-        className={`flex items-center justify-center h-10 w-10 rounded-full text-sm ${dayClass}`}
-        onClick={() => !isPast && onDateSelect(formatDate(new Date(year, monthIdx, day)))}
+        type="button"
+        disabled={isPast || (status === 'full' && !isSelected)}
+        className={dayClass}
+        onClick={() => onDateSelect(dateStr)}
       >
         {day}
-      </div>
+      </button>
     );
   }
 
   return (
-    <div className="md:col-span-2">
-      <div className="flex justify-between items-center mb-4">
-        <button type="button" onClick={() => onMonthChange(-1)} className="px-4 py-2 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-lg hover:bg-[hsl(var(--accent))] transition-colors">&lt;</button>
-        <h3 className="text-xl font-semibold text-center">
+    <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="flex justify-between items-center mb-6">
+        <button type="button" onClick={() => onMonthChange(-1)} className="p-2 hover:bg-gray-100 rounded-full text-gray-600"><ChevronLeft size={20} /></button>
+        <h3 className="text-lg font-bold text-gray-800 capitalize">
           {month.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
         </h3>
-        <button type="button" onClick={() => onMonthChange(1)} className="px-4 py-2 bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] rounded-lg hover:bg-[hsl(var(--accent))] transition-colors">&gt;</button>
+        <button type="button" onClick={() => onMonthChange(1)} className="p-2 hover:bg-gray-100 rounded-full text-gray-600"><ChevronRight size={20} /></button>
       </div>
-      <div className="grid grid-cols-7 gap-2 text-center font-medium text-gray-600 mb-2">
-        <div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div><div>D</div>
+      <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+        <div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sa</div><div>Do</div>
       </div>
-      <div className="grid grid-cols-7 gap-2 text-center">{days}</div>
+      <div className="grid grid-cols-7 gap-2 place-items-center">{days}</div>
     </div>
   );
 };
 
-// --- Componente de Horarios (Reutilizable) ---
+// --- Componente de Horarios Inteligente ---
 const TimeSlots: React.FC<{
   selectedDate: string;
   selectedTime: string;
+  selectedServiceSlots: number;
   onTimeSelect: (slot: string) => void;
   appointments: Appointment[];
   todayStr: string;
-}> = ({ selectedDate, selectedTime, onTimeSelect, appointments, todayStr }) => {
-  if (!selectedDate) return null;
-
-  const takenSlots = new Set(
-    appointments
-      .filter(app => app.date === selectedDate && app.status !== 'Cancelada')
-      .map(app => app.time.substring(0, 5))
+}> = ({ selectedDate, selectedTime, selectedServiceSlots, onTimeSelect, appointments, todayStr }) => {
+  if (!selectedDate) return (
+    <div className="h-full flex flex-col items-center justify-center text-gray-400 p-8 border-2 border-dashed border-gray-200 rounded-xl">
+      <CalendarIcon size={48} className="mb-2 opacity-20" />
+      <p>Selecciona una fecha primero</p>
+    </div>
   );
 
-  const isPast = selectedDate < todayStr;
-  if (isPast) return null;
+  // 1. Calcular qué slots individuales de 30 min están ocupados ese día
+  const occupiedIndices = new Set<number>();
+  
+  appointments
+    .filter(app => app.date === selectedDate && app.status !== 'Cancelada')
+    .forEach(app => {
+      const startIndex = ALL_TIME_SLOTS.indexOf(app.time);
+      if (startIndex !== -1) {
+        const slotsNeeded = getSlotsByServiceName(app.type);
+        for (let i = 0; i < slotsNeeded; i++) {
+          if (startIndex + i < ALL_TIME_SLOTS.length) {
+            occupiedIndices.add(startIndex + i);
+          }
+        }
+      }
+    });
 
+  const isPastDate = selectedDate < todayStr;
+  
+  // Lógica para determinar qué botones mostrar
   return (
-    <div className="md:col-span-2">
-      <h4 className="mb-4 font-semibold text-gray-700 text-lg">Selecciona una Hora para el {selectedDate}</h4>
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-        {ALL_TIME_SLOTS.map(slot => {
-          const isTaken = takenSlots.has(slot);
-          const isSelected = selectedTime === slot;
-          return (
-            <button
-              type="button"
-              key={slot}
-              disabled={isTaken}
-              onClick={() => onTimeSelect(slot)}
-              className={`w-full p-3 rounded-lg font-medium transition-all duration-200
-                ${isTaken ? 'bg-gray-200 text-gray-400 cursor-not-allowed line-through' : ''}
-                ${!isTaken && isSelected ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] ring-2 ring-[hsl(var(--ring))]' : ''}
-                ${!isTaken && !isSelected ? 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))]' : ''}
-              `}
-            >
-              {slot}
-            </button>
-          );
-        })}
+    <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+      <h4 className="mb-4 font-bold text-gray-800 flex items-center gap-2">
+        <Clock size={18} className="text-blue-500" />
+        Horarios Disponibles
+        <span className="text-xs font-normal text-gray-500 ml-auto bg-gray-100 px-2 py-1 rounded-full">
+          Requiere {selectedServiceSlots * 30} min
+        </span>
+      </h4>
+      
+      {isPastDate ? (
+        <p className="text-red-500 text-center py-4">Esta fecha ya pasó.</p>
+      ) : (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {ALL_TIME_SLOTS.map((slot, index) => {
+            // Verificar si este slot y los necesarios consecutivos están libres
+            let isAvailable = true;
+            
+            // Checar límites del día
+            if (index + selectedServiceSlots > ALL_TIME_SLOTS.length) {
+              isAvailable = false;
+            } else {
+              // Checar colisión con citas existentes
+              for (let i = 0; i < selectedServiceSlots; i++) {
+                if (occupiedIndices.has(index + i)) {
+                  isAvailable = false;
+                  break;
+                }
+              }
+            }
+
+            const isSelected = selectedTime === slot;
+
+            return (
+              <button
+                type="button"
+                key={slot}
+                disabled={!isAvailable}
+                onClick={() => onTimeSelect(slot)}
+                className={`
+                  py-2 px-1 rounded-lg text-sm font-medium transition-all duration-200
+                  ${!isAvailable 
+                    ? 'bg-gray-50 text-gray-300 cursor-not-allowed' 
+                    : isSelected 
+                      ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-200' 
+                      : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50'
+                  }
+                `}
+              >
+                {slot}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* Leyenda visual */}
+      <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-500">
+        <div className="flex items-center gap-1"><div className="w-3 h-3 bg-white border border-gray-300 rounded"></div> Libre</div>
+        <div className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-600 rounded"></div> Seleccionado</div>
+        <div className="flex items-center gap-1"><div className="w-3 h-3 bg-gray-100 rounded"></div> Ocupado</div>
       </div>
     </div>
   );
 };
 
-// --- Función de Utilidad ---
-const formatDate = (d: Date): string => d.toISOString().split('T')[0];
-
-// --- Componente Principal (Solo Cliente) ---
+// --- Componente Principal ---
 const ClientBooking: React.FC = () => {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Form State
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
-  const [type, setType] = useState('Primera Vez');
+  const [selectedService, setSelectedService] = useState(SERVICES[0]);
+  const [notes, setNotes] = useState('');
+  
+  // Data State
   const [clientMonth, setClientMonth] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [dailyCounts, setDailyCounts] = useState<Map<string, number>>(new Map());
-  const todayStr = useMemo(() => formatDate(new Date()), []);
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Cargar citas (solo necesitamos fecha, hora y estado para los conteos)
-  const fetchAppointmentsForSlots = async () => {
-    setLoading(true);
+  // Cargar citas (Lógica Supabase)
+  const fetchAppointments = async () => {
+    setLoadingData(true);
+    // Ajusta el SELECT según tus políticas RLS en Supabase
     const { data, error } = await supabase
       .from('appointments')
-      .select('date, time, status'); // Solo pedimos lo necesario
+      .select('*'); 
 
     if (error) {
       console.error("Error fetching appointments:", error);
-      setMessage({ type: 'error', text: 'No se pudieron cargar los horarios. Revisa tu política RLS de SELECT.' });
+      setMessage({ type: 'error', text: 'Error cargando disponibilidad.' });
     } else if (data) {
-      const activeAppointments = (data as Appointment[]).filter(app => app.status !== 'Cancelada');
-      setAppointments(activeAppointments);
-      
-      const counts = new Map<string, number>();
-      for (const app of activeAppointments) {
-        counts.set(app.date, (counts.get(app.date) || 0) + 1);
-      }
-      setDailyCounts(counts);
+      setAppointments(data as Appointment[]);
     }
-    setLoading(false);
+    setLoadingData(false);
   };
 
-  // Cargar los slots al montar
   useEffect(() => {
-    fetchAppointmentsForSlots();
+    fetchAppointments();
   }, []);
 
-  // Enviar el formulario
   const handleSubmitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !date || !time || !type) {
-      setMessage({ type: 'error', text: 'Por favor, completa nombre, tipo, y selecciona un día y hora.' });
+    if (!name || !date || !time) {
+      setMessage({ type: 'error', text: 'Por favor completa todos los campos obligatorios.' });
       return;
     }
+
     setLoading(true);
+    
     const { error } = await supabase
       .from('appointments')
-      .insert([{ name, date, time, type, status: 'Pendiente' }]);
+      .insert([{ 
+        name, 
+        date, 
+        time, 
+        type: selectedService.title, 
+        status: 'Pendiente',
+        notes: notes 
+      }]);
 
     if (error) {
-      console.error("Error adding document: ", error);
-      setMessage({ type: 'error', text: 'Hubo un error al agendar tu cita. Intenta de nuevo.' });
+      console.error("Error booking:", error);
+      setMessage({ type: 'error', text: 'Error al agendar. Intenta de nuevo.' });
     } else {
-      setMessage({ type: 'success', text: '¡Cita agendada con éxito!' });
-      setName(''); setDate(''); setTime(''); setType('Primera Vez');
-      // Recargar los contadores
-      fetchAppointmentsForSlots();
+      setMessage({ type: 'success', text: '¡Cita agendada con éxito! Te esperamos.' });
+      // Reset form
+      setName(''); setDate(''); setTime(''); setNotes('');
+      // Recargar para bloquear los slots ocupados
+      fetchAppointments();
     }
     setLoading(false);
   };
 
-  // Botón de Agendar
-  const AppButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ children, className = '', ...props }) => (
-    <button
-      className={`px-4 py-2 rounded-lg font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary)/0.9)] ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8 bg-background shadow-soft rounded-[var(--radius)] mt-10 text-foreground">
-      {message && (
-        <div
-          className={`p-4 rounded-lg mb-6 text-center font-medium ${
-            message.type === 'success'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-red-100 text-red-800'
-          }`}
-        >
-          {message.text}
+    <div className="min-h-screen bg-gray-50 py-8 px-4 font-sans">
+      <div className="max-w-5xl mx-auto">
+        
+        {/* Header */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">
+            Agenda tu Consulta Dental
+          </h1>
+          <p className="text-gray-500">Selecciona el servicio y encuentra el horario perfecto para ti.</p>
         </div>
-      )}
-      <div>
-        <h2 className="text-3xl font-bold text-center mb-6 text-[hsl(var(--primary))]">
-          Agenda tu Cita
-        </h2>
-        <form onSubmit={handleSubmitBooking} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex flex-col">
-            <label htmlFor="name" className="mb-2 font-semibold text-[hsl(var(--foreground))]">Nombre Completo</label>
-            <input
-              type="text"
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ej. Juan Pérez"
-              className="w-full p-3 border border-[hsl(var(--border))] rounded-lg bg-[hsl(var(--background))] focus:ring-2 focus:ring-[hsl(var(--ring))] focus:outline-none"
-            />
+
+        {/* Mensajes de estado */}
+        {message && (
+          <div className={`max-w-2xl mx-auto mb-6 p-4 rounded-lg flex items-center gap-3 shadow-sm ${
+            message.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+            {message.type === 'success' ? <CheckCircle2 /> : <AlertCircle />}
+            <p className="font-medium">{message.text}</p>
+            <button onClick={() => setMessage(null)} className="ml-auto text-sm opacity-70 hover:opacity-100">X</button>
           </div>
-          <div className="flex flex-col">
-            <label htmlFor="type" className="mb-2 font-semibold text-[hsl(var(--foreground))]">Tipo de Cita</label>
-            <select
-              id="type"
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full p-3 border border-[hsl(var(--border))] rounded-lg bg-[hsl(var(--background))] focus:ring-2 focus:ring-[hsl(var(--ring))] focus:outline-none"
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Columna Izquierda: Selección de Servicio y Datos */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* 1. Servicios */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <Sparkles className="text-blue-500" size={20} />
+                1. Selecciona el Servicio
+              </h2>
+              <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                {SERVICES.map((service) => (
+                  <button
+                    key={service.id}
+                    type="button"
+                    onClick={() => { setSelectedService(service); setTime(''); }} // Reset time on service change
+                    className={`flex items-center p-3 rounded-xl border transition-all duration-200 text-left group
+                      ${selectedService.id === service.id 
+                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' 
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                      }
+                    `}
+                  >
+                    <div className={`p-2 rounded-lg mr-3 ${selectedService.id === service.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-white'}`}>
+                      <service.icon size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-semibold ${selectedService.id === service.id ? 'text-blue-900' : 'text-gray-700'}`}>
+                        {service.title}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Duración aprox: {service.slots * 30} min
+                      </p>
+                    </div>
+                    {selectedService.id === service.id && <CheckCircle2 size={18} className="text-blue-500" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Datos del Paciente */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <User className="text-blue-500" size={20} />
+                3. Tus Datos
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ej. Juan Pérez"
+                    className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                    ¿Algo que debamos saber? 
+                    <span className="text-xs text-gray-400 font-normal">(Opcional)</span>
+                  </label>
+                  <div className="relative">
+                    <FileText className="absolute top-3 left-3 text-gray-400" size={18} />
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Ej. Tengo sensibilidad dental, prefiero anestesia..."
+                      rows={3}
+                      className="w-full pl-10 p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all outline-none resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          
+          </div>
+
+          {/* Columna Derecha: Calendario y Confirmación */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* 2. Selección de Fecha y Hora */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col">
+              <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <CalendarIcon className="text-blue-500" size={20} />
+                2. Fecha y Hora
+              </h2>
+              
+              <div className="grid md:grid-cols-2 gap-6 flex-1">
+                <Calendar
+                  selectedDate={date}
+                  onDateSelect={(d) => { setDate(d); setTime(''); }}
+                  month={clientMonth}
+                  onMonthChange={(val) => setClientMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + val, 1))}
+                  appointments={appointments}
+                  todayStr={todayStr}
+                />
+                
+                <TimeSlots
+                  selectedDate={date}
+                  selectedTime={time}
+                  selectedServiceSlots={selectedService.slots}
+                  onTimeSelect={setTime}
+                  appointments={appointments}
+                  todayStr={todayStr}
+                />
+              </div>
+            </div>
+
+            {/* Botón de Acción */}
+            <button
+              onClick={handleSubmitBooking}
+              disabled={loading || !date || !time || !name}
+              className={`
+                w-full py-4 px-6 rounded-xl text-lg font-bold shadow-lg transition-all duration-200 flex items-center justify-center gap-2
+                ${loading || !date || !time || !name
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-blue-200 hover:-translate-y-0.5'
+                }
+              `}
             >
-              <option>Primera Vez</option>
-              <option>Seguimiento</option>
-              <option>Limpieza</option>
-              <option>Ortodoncia</option>
-              <option>Otro</option>
-            </select>
+              {loading ? (
+                <span className="animate-pulse">Procesando...</span>
+              ) : (
+                <>
+                  Confirmar Cita
+                  {date && time && <span className="text-sm font-normal opacity-80 ml-1">({date} a las {time})</span>}
+                </>
+              )}
+            </button>
+
           </div>
-          <Calendar
-            selectedDate={date}
-            onDateSelect={(dateStr) => { setDate(dateStr); setTime(''); }}
-            month={clientMonth}
-            onMonthChange={(amount) => setClientMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + amount, 1))}
-            dailyCounts={dailyCounts}
-            todayStr={todayStr}
-          />
-          <TimeSlots
-            selectedDate={date}
-            selectedTime={time}
-            onTimeSelect={setTime}
-            appointments={appointments}
-            todayStr={todayStr}
-          />
-          <div className="md:col-span-2">
-            <AppButton type="submit" disabled={loading} className="w-full py-3 px-6 mt-4 text-lg">
-              {loading ? 'Agendando...' : 'Agendar Cita'}
-            </AppButton>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
