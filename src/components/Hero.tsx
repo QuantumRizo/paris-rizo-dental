@@ -29,7 +29,7 @@ const Hero = () => {
   return (
     <section
       id="inicio"
-      className="relative flex items-center justify-center overflow-hidden min-h-screen"
+      className="relative flex items-center justify-center overflow-hidden min-h-[70vh]"
     >
       {/* --- NUEVA Imagen de Fondo --- */}
       <img
