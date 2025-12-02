@@ -329,7 +329,7 @@ const ClientBooking: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 font-sans">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 pb-32 font-sans">
       <div className="max-w-5xl mx-auto">
         
         {/* Header */}
