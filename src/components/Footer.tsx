@@ -39,6 +39,15 @@ const Footer = () => {
               <FaLinkedin className="w-8 h-8 text-[#0A66C2]" />
             </a>
           </div>
+  {/* Créditos del desarrollador */}
+          <a 
+            href="https://davidrizo.vercel.app/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-[10px]  hover:text-muted-foreground transition-colors uppercase tracking-wider"
+          >
+            Created by David Rizo
+          </a>
         </div>
       </div>
     </footer>
