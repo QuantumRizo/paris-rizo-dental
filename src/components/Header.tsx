@@ -8,7 +8,7 @@ const Header = () => {
   const scrollToSection = (sectionId: string) => {
     // 3. Modificar la función
     navigate('/'); // <-- 4. Ir a la página de inicio
-    
+
     // 5. Esperar a que la página cambie y LUEGO hacer scroll
     setTimeout(() => {
       const element = document.getElementById(sectionId);
@@ -21,7 +21,7 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-secondary/70 backdrop-blur-sm border-b border-border shadow-soft">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        
+
         {/* Logo */}
         <button onClick={() => scrollToSection("inicio")} className="flex items-center">
           <img
@@ -60,13 +60,15 @@ const Header = () => {
           className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-medium transition-all hover:scale-105"
         >
           {/* 7. Usar <Link> en lugar de <a> para evitar recargar la página */}
-          <Link
-            to="/citas"
+          <a
+            href={`https://wa.me/525531492408?text=Hola,%20me%20gustaría%20agendar%20una%20cita`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-2"
           >
             <Calendar className="w-4 h-4" />
             <span className="hidden sm:inline">Agendar cita</span>
-          </Link>
+          </a>
         </Button>
       </div>
     </header>

@@ -12,7 +12,7 @@ import Layout from '@/layouts/Layout';
 // Páginas de tu sitio
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
-import ClientBooking from "@/pages/ClientBooking";
+
 import Admin from "@/pages/Admin";
 
 const queryClient = new QueryClient();
@@ -38,7 +38,7 @@ const App = () => (
             <Route index element={<Index />} />
 
             {/* Otras rutas públicas */}
-            <Route path="citas" element={<ClientBooking />} />
+
 
             {/* El comodín "*" (NotFound) también va dentro del layout
                 para que muestre el Header y Footer. */}

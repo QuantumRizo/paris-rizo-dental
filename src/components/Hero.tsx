@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Instagram, Linkedin, Calendar } from "lucide-react";
-import { Link } from "react-router-dom"; 
+import { Link } from "react-router-dom";
 
 // Nota: El hook 'useNavigate' ya no se usa si solo usamos <Link>
 // Si 'scrollToSection' se usa en otro lugar, deberás volver a importar 'useNavigate'
@@ -46,7 +46,7 @@ const Hero = () => {
       {/* <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 to-background z-0" /> */}
 
       <div className="container mx-auto px-6 py-16 sm:py-24 relative z-10 flex flex-col items-center justify-center gap-12 lg:gap-20">
-        
+
         {/* --- Contenido de Texto (Centrado) --- */}
         <div className="text-center w-full lg:w-3/4 animate-fade-in">
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
@@ -63,13 +63,15 @@ const Hero = () => {
               // Cambiado a color 'primary' de tu tema
               className="bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.9)] text-[hsl(var(--primary-foreground))] shadow-medium transition-all hover:scale-105"
             >
-              <Link
-                to="/citas"
+              <a
+                href={`https://wa.me/525531492408?text=Hola,%20me%20gustaría%20agendar%20una%20cita`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-2"
               >
                 <Calendar className="w-4 h-4" />
                 <span className="sm:inline">Agendar cita</span>
-              </Link>
+              </a>
             </Button>
 
             {/* Redes */}
