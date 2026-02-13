@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Patient, Appointment } from '../../appointments/types';
 import { MedicalHistoryEditor } from './MedicalHistoryEditor';
-import { PatientFiles } from './PatientFiles';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -92,7 +92,6 @@ export const PatientClinicalRecord = ({
                             <TabsTrigger value="history">Datos / Historia</TabsTrigger>
                             <TabsTrigger value="appointments">Citas</TabsTrigger>
                             <TabsTrigger value="notes">Notas</TabsTrigger>
-                            <TabsTrigger value="files">Archivos</TabsTrigger>
                         </TabsList>
                     </div>
 
@@ -215,10 +214,6 @@ export const PatientClinicalRecord = ({
                                     </Button>
                                 </div>
                             </Card>
-                        </TabsContent>
-
-                        <TabsContent value="files" className="mt-0">
-                            <PatientFiles patientId={patient.id} />
                         </TabsContent>
                     </ScrollArea>
                 </Tabs>
