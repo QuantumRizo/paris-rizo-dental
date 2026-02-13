@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { 
-  Sparkles, 
-  Shield, 
-  Stethoscope, 
-  FileBadge, 
-  Scissors, 
-  Baby, 
+import { supabase } from '@/lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  Sparkles,
+  Shield,
+  Stethoscope,
+  FileBadge,
+  Scissors,
+  Baby,
   Calendar as CalendarIcon,
   Clock,
   CheckCircle2,
@@ -18,10 +19,8 @@ import {
 } from 'lucide-react';
 
 // --- Configuración de Supabase ---
-// Asegúrate de tener VITE_SUPABASE_URL y VITE_SUPABASE_KEY en tu archivo .env local
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseKey = import.meta.env.VITE_SUPABASE_KEY || "";
-const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
+// Usamos el cliente compartido que ya está configurado con las variables de entorno correctas
+// (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY)
 
 // --- Configuración de Servicios y Duración ---
 // slots: Cantidad de bloques de 30 min que ocupa
@@ -85,7 +84,7 @@ const Calendar: React.FC<{
     dayApps.forEach(app => {
       occupiedSlots += getSlotsByServiceName(app.type);
     });
-    
+
     const totalSlots = ALL_TIME_SLOTS.length;
     if (occupiedSlots >= totalSlots) return 'full';
     if (occupiedSlots >= totalSlots * 0.7) return 'busy';
@@ -106,7 +105,7 @@ const Calendar: React.FC<{
     const status = getDayStatus(dateStr);
 
     let dayClass = 'h-10 w-10 rounded-full flex items-center justify-center text-sm transition-all duration-200 relative ';
-    
+
     if (isPast) {
       dayClass += 'text-gray-300 cursor-not-allowed';
     } else {
@@ -120,7 +119,7 @@ const Calendar: React.FC<{
       } else {
         dayClass += 'bg-green-50 text-green-700 hover:bg-green-100 font-medium';
       }
-      
+
       if (isToday && !isSelected) dayClass += ' border-2 border-blue-400';
     }
 
@@ -172,7 +171,7 @@ const TimeSlots: React.FC<{
 
   // 1. Calcular qué slots individuales de 30 min están ocupados ese día
   const occupiedIndices = new Set<number>();
-  
+
   appointments
     .filter(app => app.date === selectedDate && app.status !== 'Cancelada')
     .forEach(app => {
@@ -188,7 +187,7 @@ const TimeSlots: React.FC<{
     });
 
   const isPastDate = selectedDate < todayStr;
-  
+
   // Lógica para determinar qué botones mostrar
   return (
     <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
@@ -199,7 +198,7 @@ const TimeSlots: React.FC<{
           Requiere {selectedServiceSlots * 30} min
         </span>
       </h4>
-      
+
       {isPastDate ? (
         <p className="text-red-500 text-center py-4">Esta fecha ya pasó.</p>
       ) : (
@@ -207,7 +206,7 @@ const TimeSlots: React.FC<{
           {ALL_TIME_SLOTS.map((slot, index) => {
             // Verificar si este slot y los necesarios consecutivos están libres
             let isAvailable = true;
-            
+
             // Checar límites del día
             if (index + selectedServiceSlots > ALL_TIME_SLOTS.length) {
               isAvailable = false;
@@ -231,10 +230,10 @@ const TimeSlots: React.FC<{
                 onClick={() => onTimeSelect(slot)}
                 className={`
                   py-2 px-1 rounded-lg text-sm font-medium transition-all duration-200
-                  ${!isAvailable 
-                    ? 'bg-gray-50 text-gray-300 cursor-not-allowed' 
-                    : isSelected 
-                      ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-200' 
+                  ${!isAvailable
+                    ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                    : isSelected
+                      ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-200'
                       : 'bg-white border border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50'
                   }
                 `}
@@ -245,7 +244,7 @@ const TimeSlots: React.FC<{
           })}
         </div>
       )}
-      
+
       {/* Leyenda visual */}
       <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-500">
         <div className="flex items-center gap-1"><div className="w-3 h-3 bg-white border border-gray-300 rounded"></div> Libre</div>
@@ -261,14 +260,14 @@ const ClientBooking: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  
+
   // Form State
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [selectedService, setSelectedService] = useState(SERVICES[0]);
   const [notes, setNotes] = useState('');
-  
+
   // Data State
   const [clientMonth, setClientMonth] = useState(new Date());
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -280,7 +279,8 @@ const ClientBooking: React.FC = () => {
     // Ajusta el SELECT según tus políticas RLS en Supabase
     const { data, error } = await supabase
       .from('appointments')
-      .select('*'); 
+      .select('*')
+      .eq('app_id', 'dental');
 
     if (error) {
       console.error("Error fetching appointments:", error);
@@ -303,16 +303,18 @@ const ClientBooking: React.FC = () => {
     }
 
     setLoading(true);
-    
+
     const { error } = await supabase
       .from('appointments')
-      .insert([{ 
-        name, 
-        date, 
-        time, 
-        type: selectedService.title, 
+      .insert([{
+        name,
+        date,
+        time,
+        type: selectedService.title,
         status: 'Pendiente',
-        notes: notes 
+        notes: notes,
+        app_id: 'dental',
+        hospital_id: 'consultorio-paris-rizo'
       }]);
 
     if (error) {
@@ -331,7 +333,7 @@ const ClientBooking: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 pb-32 font-sans">
       <div className="max-w-5xl mx-auto">
-        
+
         {/* Header */}
         <div className="text-center mb-10">
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">
@@ -342,9 +344,8 @@ const ClientBooking: React.FC = () => {
 
         {/* Mensajes de estado */}
         {message && (
-          <div className={`max-w-2xl mx-auto mb-6 p-4 rounded-lg flex items-center gap-3 shadow-sm ${
-            message.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
-          }`}>
+          <div className={`max-w-2xl mx-auto mb-6 p-4 rounded-lg flex items-center gap-3 shadow-sm ${message.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+            }`}>
             {message.type === 'success' ? <CheckCircle2 /> : <AlertCircle />}
             <p className="font-medium">{message.text}</p>
             <button onClick={() => setMessage(null)} className="ml-auto text-sm opacity-70 hover:opacity-100">X</button>
@@ -352,10 +353,10 @@ const ClientBooking: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
+
           {/* Columna Izquierda: Selección de Servicio y Datos */}
           <div className="lg:col-span-5 space-y-6">
-            
+
             {/* 1. Servicios */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -369,8 +370,8 @@ const ClientBooking: React.FC = () => {
                     type="button"
                     onClick={() => { setSelectedService(service); setTime(''); }} // Reset time on service change
                     className={`flex items-center p-3 rounded-xl border transition-all duration-200 text-left group
-                      ${selectedService.id === service.id 
-                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' 
+                      ${selectedService.id === service.id
+                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
                         : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                       }
                     `}
@@ -411,7 +412,7 @@ const ClientBooking: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
-                    ¿Algo que debamos saber? 
+                    ¿Algo que debamos saber?
                     <span className="text-xs text-gray-400 font-normal">(Opcional)</span>
                   </label>
                   <div className="relative">
@@ -427,19 +428,19 @@ const ClientBooking: React.FC = () => {
                 </div>
               </div>
             </div>
-          
+
           </div>
 
           {/* Columna Derecha: Calendario y Confirmación */}
           <div className="lg:col-span-7 space-y-6">
-            
+
             {/* 2. Selección de Fecha y Hora */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col">
               <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <CalendarIcon className="text-blue-500" size={20} />
                 2. Fecha y Hora
               </h2>
-              
+
               <div className="grid md:grid-cols-2 gap-6 flex-1">
                 <Calendar
                   selectedDate={date}
@@ -449,7 +450,7 @@ const ClientBooking: React.FC = () => {
                   appointments={appointments}
                   todayStr={todayStr}
                 />
-                
+
                 <TimeSlots
                   selectedDate={date}
                   selectedTime={time}

@@ -7,13 +7,13 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 // --- Importamos el nuevo Layout ---
 // Asegúrate de que la ruta a 'Layout' sea correcta.
 // Si `@/layouts/Layout` no funciona, prueba con `../layouts/Layout`
-import Layout from '@/layouts/Layout'; 
+import Layout from '@/layouts/Layout';
 
 // Páginas de tu sitio
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
 import ClientBooking from "@/pages/ClientBooking";
-import AdminPanel from "@/pages/AdminPanel";
+import Admin from "@/pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +27,7 @@ const App = () => (
           {/* --- RUTA DE ADMIN (SIN LAYOUT) --- */}
           {/* Dejamos el AdminPanel fuera del layout público
               porque tiene su propia interfaz de login y panel. */}
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin" element={<Admin />} />
 
           {/* --- RUTAS PÚBLICAS (CON LAYOUT) --- */}
           {/* Creamos una "ruta padre" que usa el componente Layout.
@@ -36,7 +36,7 @@ const App = () => (
           <Route path="/" element={<Layout />}>
             {/* La ruta 'index' es la que se muestra en '/' */}
             <Route index element={<Index />} />
-            
+
             {/* Otras rutas públicas */}
             <Route path="citas" element={<ClientBooking />} />
 
