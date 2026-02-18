@@ -103,7 +103,7 @@ export interface HospitalSchedule {
 
 export const APPOINTMENT_CONFIG = {
     START_HOUR: 9, // 9:00 AM
-    END_HOUR: 15,  // 3:00 PM
+    END_HOUR: 21,  // 9:00 PM (Ends scheduling at 20:30 or 21:00 depending on logic)
     INTERVAL_MINUTES: 30
 };
 

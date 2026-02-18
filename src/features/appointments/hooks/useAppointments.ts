@@ -29,8 +29,8 @@ export const useAppointments = () => {
                 patientId: a.patient_id,
                 patientName: a.name || 'Paciente Sin Nombre', // Map from 'name' column in appointments table
                 reason: a.reason,
-                date: a.date.split('T')[0], // Extract YYYY-MM-DD
-                time: new Date(a.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), // Extract HH:MM
+                date: a.date.split(/[T ]/)[0], // Extract YYYY-MM-DD (handle 'T' or space)
+                time: a.date.split(/[T ]/)[1]?.substring(0, 5) || new Date(a.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }), // Try simple split first, fallback to Date parse
                 status: a.status,
                 serviceName: a.service_name, // Optional if we add this to DB or join
                 notes: a.notes, // Fetching the notes where we saved the custom description
@@ -160,8 +160,13 @@ export const useAppointments = () => {
             await fetchData();
             return true;
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving appointment:', error);
+            if (error.code === '23505' || error.status === 409) {
+                alert("El horario seleccionado ya no está disponible. Por favor seleccione otro.");
+            } else {
+                alert("Error al guardar la cita. Intente nuevamente.");
+            }
             throw error;
         }
     };
@@ -201,7 +206,7 @@ export const useAppointments = () => {
 
         const slots: string[] = [];
         const startHour = 9;
-        const endHour = 15; // 3 PM
+        const endHour = 21; // 9 PM
         const interval = 30;
 
         // Existing appointments for this day and hospital from STATE
