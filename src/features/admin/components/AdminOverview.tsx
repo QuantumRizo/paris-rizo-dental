@@ -171,12 +171,14 @@ export const AdminOverview = ({ }: AdminOverviewProps) => {
                                 </div>
                             ) : (
                                 <div className="space-y-1.5">
-                                    {todayAppointments.sort((a, b) => a.time.localeCompare(b.time)).map(apt => {
+                                    {todayAppointments.sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(apt => {
                                         const patient = patients.find(p => p.id === apt.patientId);
+                                        const isPast = isAppointmentPast(apt.date, apt.time);
+
                                         return (
-                                            <div key={apt.id} className="flex items-center justify-between p-2 border rounded-md bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                            <div key={apt.id} className={`flex items-center justify-between p-2 border rounded-md transition-colors ${isPast ? 'bg-gray-50/30 opacity-60 grayscale' : 'bg-gray-50/50 hover:bg-gray-50'}`}>
                                                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                                                    <div className="flex flex-col items-center justify-center w-10 h-10 bg-white border rounded-md shadow-sm shrink-0">
+                                                    <div className={`flex flex-col items-center justify-center w-10 h-10 ${isPast ? 'bg-gray-100' : 'bg-white'} border rounded-md shadow-sm shrink-0`}>
                                                         <span className="text-[10px] font-bold text-[#1c334a] leading-none text-center">
                                                             {formatTime(apt.time).split(' ')[0]}<br />
                                                             <span className="text-[8px] font-normal">{formatTime(apt.time).split(' ')[1]}</span>
