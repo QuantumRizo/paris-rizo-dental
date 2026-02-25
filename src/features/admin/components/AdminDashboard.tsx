@@ -1,4 +1,10 @@
-import { useState } from 'react'; // Re-saving to clear IDE error cache
+import { useState, useEffect } from 'react';
+import { useAppointments } from '../../appointments/hooks/useAppointments';
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar as CalendarIcon, LayoutDashboard, Users, Lock, CalendarPlus, LogOut, Menu, X, UserPlus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { AdminOverview } from './AdminOverview';
 import { AdminCalendar } from './AdminCalendar';
 import { PatientDirectory } from './PatientDirectory';
@@ -6,26 +12,58 @@ import { AddPatientDialog } from './AddPatientDialog';
 import { AdminAppointmentDialog } from './AppointmentDialog';
 import { BookingSelectionDialog } from './BookingSelectionDialog';
 import { GlobalSearch } from './GlobalSearch';
-import { useAppointments } from '../../appointments/hooks/useAppointments';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Plus, Menu, LogOut, LayoutDashboard, Calendar as CalendarIcon, Users, UserPlus } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 export const AdminDashboard = () => {
-    const { hospitals, saveAppointment, addPatient } = useAppointments();
+    const { hospitals, blockSlot, saveAppointment, addPatient, getAvailableSlots, patients } = useAppointments();
+
+    // Helper helper
+    const formatTime = (timeStr: string) => {
+        if (!timeStr) return '';
+        const [hours, minutes] = timeStr.split(':');
+        const date = new Date();
+        date.setHours(parseInt(hours, 10));
+        date.setMinutes(parseInt(minutes, 10));
+        return new Intl.DateTimeFormat('es-MX', { hour: 'numeric', minute: '2-digit', hour12: true }).format(date);
+    };
+
+    // Hospital configuration - since it's only 1 hospital we can just pick the first one
+    const hospitalId = hospitals.length > 0 ? hospitals[0].id : '';
+
+    const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
+    const [isAppointmentDialogOpen, setIsAppointmentDialogOpen] = useState(false);
+    const [isBookingTypeDialogOpen, setIsBookingTypeDialogOpen] = useState(false);
+    const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Dialog States
-    const [isBookingOpen, setIsBookingOpen] = useState(false);
-    const [isAddPatientOpen, setIsAddPatientOpen] = useState(false);
-    const [isBookingTypeOpen, setIsBookingTypeOpen] = useState(false);
+    // Block Schedule State
+    const [blockDate, setBlockDate] = useState('');
+    const [blockTime, setBlockTime] = useState('');
+    const [isBlocking, setIsBlocking] = useState(false);
 
-    // Selection States for Flows
+    const [bookingPatientData, setBookingPatientData] = useState<{ id?: string, name: string, email: string, phone: string, notes?: string } | null>(null);
 
-    const [selectedPatientForBooking, setSelectedPatientForBooking] = useState<any>(null); // Use a proper type if possible, or any for flexibility
+    const handleBlockSlot = async () => {
+        if (!blockDate || !blockTime) return;
+        setIsBlocking(true);
+        try {
+            if (!hospitalId) {
+                alert("Hospital no configurado");
+                setIsBlocking(false);
+                return;
+            }
+            await blockSlot(hospitalId, blockDate, blockTime);
+            setBlockDate('');
+            setBlockTime('');
+            setIsBlockDialogOpen(false);
+            toast.success("Horario bloqueado exitosamente");
+        } catch (error: any) {
+            alert(error?.message || "Error al bloquear horario");
+        } finally {
+            setIsBlocking(false);
+        }
+    };
 
     const handleLogout = async () => {
         try {
@@ -37,181 +75,232 @@ export const AdminDashboard = () => {
         }
     };
 
-    const handleNewAppointmentClick = () => {
-        setSelectedPatientForBooking(null); // Reset
-        setIsBookingTypeOpen(true);
-    };
-
-
-
     const startBookingForPatient = (patientData: any) => {
-        setSelectedPatientForBooking(patientData);
-        setIsBookingTypeOpen(false);
-        setIsBookingOpen(true);
+        setBookingPatientData(patientData);
+        setIsBookingTypeDialogOpen(false);
+        setIsAppointmentDialogOpen(true);
     };
 
     return (
         <div className="space-y-8 bg-gray-50/30 min-h-screen pb-20">
-            {/* Header with Mobile Menu Toggle and Global Search */}
+            {/* Header */}
             <div className="bg-[#1c334a] text-white shadow-md sticky top-0 z-40">
-                <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                            <SheetTrigger asChild>
-                                <Button variant="ghost" size="icon" className="md:hidden text-white hover:bg-white/10">
-                                    <Menu />
-                                </Button>
-                            </SheetTrigger>
-                            <SheetContent side="left" className="bg-[#1c334a] text-white border-r-gray-700 w-[240px] p-0">
-                                <div className="flex flex-col h-full py-6">
-                                    <div className="px-6 mb-8">
-                                        <h2 className="text-xl font-bold">Menú Admin</h2>
-                                    </div>
-                                    <nav className="flex-1 px-4 space-y-2">
-                                        <Button variant="ghost" className="w-full justify-start hover:bg-white/10 text-white" onClick={() => setIsMobileMenuOpen(false)}>
-                                            <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
-                                        </Button>
-                                        <Button variant="ghost" className="w-full justify-start hover:bg-white/10 text-white" onClick={() => setIsMobileMenuOpen(false)}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" /> Calendario
-                                        </Button>
-                                        <Button variant="ghost" className="w-full justify-start hover:bg-white/10 text-white" onClick={() => setIsMobileMenuOpen(false)}>
-                                            <Users className="mr-2 h-4 w-4" /> Pacientes
-                                        </Button>
-                                    </nav>
-                                    <div className="p-4 border-t border-gray-700">
-                                        <Button variant="ghost" className="w-full justify-start text-red-300 hover:text-red-200 hover:bg-red-900/20" onClick={handleLogout}>
-                                            <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
-                                        </Button>
-                                    </div>
+                <div className="container mx-auto px-4 py-3 lg:py-4">
+                    <div className="flex flex-col gap-4">
+                        {/* Top Row: Logo & Mobile Toggle */}
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/10 p-2 rounded-full backdrop-blur-sm">
+                                    <img
+                                        src="/logo.png"
+                                        alt="Logo París Rizo Dental"
+                                        className="w-8 h-8 lg:w-10 lg:h-10 rounded-full object-cover border-2 border-white/20 bg-white"
+                                    />
                                 </div>
-                            </SheetContent>
-                        </Sheet>
+                                <div>
+                                    <h1 className="text-lg lg:text-xl font-bold tracking-tight leading-none">Panel de Admin</h1>
+                                </div>
+                            </div>
 
-                        <h1 className="text-xl font-bold hidden md:block">Panel Administrativo</h1>
-                        <span className="md:hidden font-bold">Admin</span>
-                    </div>
+                            {/* Mobile Menu Toggle */}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="lg:hidden text-white hover:bg-white/10"
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            >
+                                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                            </Button>
+                        </div>
 
-                    {/* Global Search Bar */}
-                    <div className="flex-1 max-w-md mx-4 hidden md:block">
-                        <GlobalSearch
-                            className="w-full"
-                            onSelectPatient={(patient) => {
-                                // When selecting from global search, maybe open their record or book?
-                                // For now, let's open booking for them
-                                startBookingForPatient({
-                                    id: patient.id,
-                                    name: patient.name,
-                                    email: patient.email,
-                                    phone: patient.phone
-                                });
-                            }}
-                        />
-                    </div>
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                            {/* Global Search - Always Visible on Mobile (Full Width), Centered on Desktop */}
+                            <div className="w-full lg:flex-1 lg:max-w-xl lg:px-6 order-1 lg:order-none">
+                                <GlobalSearch
+                                    className="w-full"
+                                    onSelectPatient={(patient) => {
+                                        startBookingForPatient({
+                                            id: patient.id,
+                                            name: patient.name,
+                                            email: patient.email,
+                                            phone: patient.phone
+                                        });
+                                    }}
+                                />
+                            </div>
 
-                    <div className="flex items-center gap-2">
-                        <Button
-                            onClick={() => setIsAddPatientOpen(true)}
-                            className="bg-[#1c334a] hover:bg-[#2a4560] text-white shadow-md border border-white/10 transition-all hover:scale-105 active:scale-95 hidden md:flex"
-                        >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Nuevo Paciente
-                        </Button>
-                        <Button
-                            onClick={handleNewAppointmentClick}
-                            className="bg-[#1c334a] hover:bg-[#2a4560] text-white shadow-md border border-white/10 transition-all hover:scale-105 active:scale-95"
-                        >
-                            <Plus className="w-4 h-4 md:mr-2" />
-                            <span className="hidden md:inline">Nueva Cita</span>
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            onClick={handleLogout}
-                            className="hidden md:flex bg-slate-700 hover:bg-slate-600 text-white border-slate-600 shadow-sm"
-                        >
-                            <LogOut className="w-4 h-4" />
-                        </Button>
+                            {/* Controls - Hidden on Mobile unless menu open, Visible on Desktop */}
+                            <div className={`${isMobileMenuOpen ? 'flex' : 'hidden'} lg:flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full lg:w-auto order-2 border-t lg:border-t-0 border-white/10 pt-4 lg:pt-0`}>
+                                <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 w-full lg:w-auto">
+                                    <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm" variant="secondary" className="bg-red-500/90 text-white hover:bg-red-600 border-0 shadow-lg font-medium justify-start lg:justify-center">
+                                                <Lock className="w-3.5 h-3.5 mr-2" />
+                                                <span>Reservar Horario</span>
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-[425px]">
+                                            <DialogHeader>
+                                                <DialogTitle className="flex items-center gap-2">
+                                                    <Lock className="w-5 h-5 text-red-500" />
+                                                    Bloquear Horario
+                                                </DialogTitle>
+                                            </DialogHeader>
+                                            <div className="grid gap-4 py-4">
+                                                <div className="grid gap-2">
+                                                    <label className="text-sm font-medium">Fecha</label>
+                                                    <Input
+                                                        type="date"
+                                                        value={blockDate}
+                                                        onChange={(e) => setBlockDate(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    <label className="text-sm font-medium">Hora</label>
+                                                    <select
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                        value={blockTime}
+                                                        onChange={(e) => setBlockTime(e.target.value)}
+                                                    >
+                                                        <option value="">Seleccionar hora...</option>
+                                                        {(blockDate && hospitalId)
+                                                            ? getAvailableSlots(blockDate, hospitalId).map((slot: string) => (
+                                                                <option key={slot} value={slot}>{formatTime(slot)}</option>
+                                                            ))
+                                                            : <option disabled>Seleccione una fecha primero</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                                <Button onClick={handleBlockSlot} disabled={isBlocking || !blockDate || !blockTime} className="bg-red-600 hover:bg-red-700">
+                                                    {isBlocking ? "Bloqueando..." : "Confirmar Bloqueo"}
+                                                </Button>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    <Button
+                                        size="sm"
+                                        className="bg-primary hover:bg-primary/90 text-white shadow-lg gap-2 justify-start lg:justify-center"
+                                        onClick={() => {
+                                            setBookingPatientData(null);
+                                            setIsBookingTypeDialogOpen(true);
+                                        }}
+                                    >
+                                        <CalendarPlus className="w-4 h-4" />
+                                        <span>Agendar Cita</span>
+                                    </Button>
+
+                                    <Button
+                                        size="sm"
+                                        className="bg-primary hover:bg-primary/90 text-white shadow-lg gap-2 justify-start lg:justify-center"
+                                        onClick={() => setIsAddPatientDialogOpen(true)}
+                                    >
+                                        <UserPlus className="w-4 h-4" />
+                                        <span>Nuevo Paciente</span>
+                                    </Button>
+
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-white hover:bg-white/20 gap-2 justify-start lg:justify-center"
+                                        onClick={handleLogout}
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        <span>Cerrar Sesión</span>
+                                    </Button>
+                                </div>
+
+                                {/* Dialogs */}
+                                <BookingSelectionDialog
+                                    open={isBookingTypeDialogOpen}
+                                    onOpenChange={setIsBookingTypeDialogOpen}
+                                    onNewPatient={() => {
+                                        setIsBookingTypeDialogOpen(false);
+                                        setIsAddPatientDialogOpen(true);
+                                    }}
+                                    onExistingPatient={(patient) => {
+                                        setIsBookingTypeDialogOpen(false);
+                                        setBookingPatientData({
+                                            id: patient.id,
+                                            name: patient.name,
+                                            email: patient.email,
+                                            phone: patient.phone,
+                                            notes: ''
+                                        });
+                                        setIsAppointmentDialogOpen(true);
+                                    }}
+                                />
+
+                                <AddPatientDialog
+                                    open={isAddPatientDialogOpen}
+                                    onOpenChange={setIsAddPatientDialogOpen}
+                                    onSave={addPatient}
+                                    onBookAppointment={(data) => {
+                                        setBookingPatientData(data);
+                                        setIsAddPatientDialogOpen(false);
+                                        setIsAppointmentDialogOpen(true);
+                                    }}
+                                />
+
+                                <AdminAppointmentDialog
+                                    open={isAppointmentDialogOpen}
+                                    onOpenChange={(val) => {
+                                        setIsAppointmentDialogOpen(val);
+                                        if (!val) setBookingPatientData(null); // Clear data on close
+                                    }}
+                                    hospitals={hospitals}
+                                    initialPatientData={bookingPatientData}
+                                    onSave={async (appointmentData, patientData) => {
+                                        try {
+                                            await saveAppointment(appointmentData, patientData);
+                                            toast.success("Cita agendada correctamente");
+                                            setIsAppointmentDialogOpen(false);
+                                        } catch (error) {
+                                            console.error(error);
+                                            toast.error("Error al guardar la cita");
+                                            throw error;
+                                        }
+                                    }}
+                                />
+
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content with Tabs */}
             <div className="container mx-auto px-4">
                 <Tabs defaultValue="overview" className="space-y-6">
-                    <TabsList className="bg-white p-1 rounded-lg border shadow-sm w-full md:w-auto overflow-x-auto flex justify-start md:justify-center">
-                        <TabsTrigger value="overview" className="flex-1 md:flex-none data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                            <LayoutDashboard className="w-4 h-4 mr-2" />
-                            Tablero
+                    <TabsList className="grid w-full grid-cols-3 lg:w-[400px] mx-auto lg:mx-0">
+                        <TabsTrigger value="overview" className="gap-2">
+                            <LayoutDashboard className="w-4 h-4" /> Tablero
                         </TabsTrigger>
-                        <TabsTrigger value="calendar" className="flex-1 md:flex-none data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                            <CalendarIcon className="w-4 h-4 mr-2" />
-                            Calendario
+                        <TabsTrigger value="calendar" className="gap-2">
+                            <CalendarIcon className="w-4 h-4" /> Calendario
                         </TabsTrigger>
-                        <TabsTrigger value="patients" className="flex-1 md:flex-none data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                            <Users className="w-4 h-4 mr-2" />
-                            Pacientes
+                        <TabsTrigger value="patients" className="gap-2">
+                            <Users className="w-4 h-4" /> Pacientes
                         </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="overview" className="focus-visible:outline-none">
+                    <TabsContent value="overview" className="space-y-4">
                         <AdminOverview />
                     </TabsContent>
 
-                    <TabsContent value="calendar" className="focus-visible:outline-none">
+                    <TabsContent value="calendar">
                         <AdminCalendar />
                     </TabsContent>
 
-                    <TabsContent value="patients" className="focus-visible:outline-none">
+                    <TabsContent value="patients">
                         <PatientDirectory
-                            onBookAppointment={(patientData) => startBookingForPatient(patientData)}
+                            onBookAppointment={(data) => {
+                                setBookingPatientData(data);
+                                setIsAppointmentDialogOpen(true);
+                            }}
                         />
                     </TabsContent>
                 </Tabs>
             </div>
-
-            {/* Dialogs */}
-
-            {/* 1. Booking Type Selection (New or Existing) */}
-            <BookingSelectionDialog
-                open={isBookingTypeOpen}
-                onOpenChange={setIsBookingTypeOpen}
-                onNewPatient={() => {
-                    setIsBookingTypeOpen(false);
-                    setIsAddPatientOpen(true);
-                }}
-                onExistingPatient={(patientData) => {
-                    startBookingForPatient(patientData);
-                }}
-            />
-
-            {/* 2. Add Patient Dialog */}
-            <AddPatientDialog
-                open={isAddPatientOpen}
-                onOpenChange={setIsAddPatientOpen}
-                onSave={addPatient}
-                onBookAppointment={(newPatientData) => {
-                    // After adding, go straight to booking
-                    startBookingForPatient(newPatientData);
-                }}
-            />
-
-            {/* 3. Book Appointment Dialog */}
-            <AdminAppointmentDialog
-                open={isBookingOpen}
-                onOpenChange={setIsBookingOpen}
-                hospitals={hospitals}
-                initialPatientData={selectedPatientForBooking} // Pass selected patient
-                onSave={async (appointmentData, patientData) => {
-                    try {
-                        await saveAppointment(appointmentData, patientData);
-                        toast.success("Cita agendada correctamente");
-                        setIsBookingOpen(false);
-                    } catch (error) {
-                        console.error(error);
-                        toast.error("Error al guardar la cita");
-                    }
-                }}
-            />
-
         </div>
     );
 };

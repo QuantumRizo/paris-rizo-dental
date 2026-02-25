@@ -135,7 +135,7 @@ export const PatientDirectory = ({ onBookAppointment }: PatientDirectoryProps) =
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 {/* Search with Autocomplete */}
-                <div className="relative z-50 w-full md:w-[300px]">
+                <div className="relative z-30 w-full md:w-[300px]">
                     <div className="flex items-center gap-2 bg-white p-1 rounded-lg border shadow-sm">
                         <Search className="w-4 h-4 ml-2 text-gray-400" />
                         <Input
